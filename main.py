@@ -12,6 +12,12 @@ WINDOW = 800
 TILE_SIZE = 40
 RANGE = (0, WINDOW // TILE_SIZE - 1)
 SPEED_INCREMENT = 1
+rainbow_mode = False
+power_up = None
+power_up_timer = None
+
+
+
 import random
 
 MAZE = [
@@ -86,15 +92,13 @@ def save_highscore(name, score):
 def delete_highscore(name):
     cursor.execute('DELETE FROM highscores WHERE name = ?', (name,))
     conn.commit()
-def spawn_power_up():
-    global power_up, power_up_timer
-    power_up = pg.rect.Rect(get_random_position() + [TILE_SIZE, TILE_SIZE])
-    power_up_timer = pg.time.get_ticks() + POWER_UP_DURATION
+
 
 def spawn_power_up():
     global power_up, power_up_timer
     power_up = pg.rect.Rect(get_random_position() + [TILE_SIZE, TILE_SIZE])
     power_up_timer = pg.time.get_ticks() + POWER_UP_DURATION
+
 
 def check_power_up_collision(snake):
     global score, power_up, power_up_timer, double_score_timer
@@ -151,12 +155,36 @@ def display_and_manage_highscores(current_score):
     pg.display.flip()
     pg.time.wait(5000)
 
-    # Ask if user wants to delete a highscore
-    option = input("Do you want to delete a highscore? (yes/no): ")
-    if option.lower() == 'yes':
-        name_to_delete = input("Enter the name of the player whose highscore you want to delete: ")
-        delete_highscore(name_to_delete)
-        print(f"Highscore for {name_to_delete} has been deleted.")
+    def pause_menu():
+        paused = True
+        selected = 0
+        options = ["Resume", "Restart", "Exit"]
+
+        while paused:
+                for event in pg.event.get():
+                    if event.type == pg.QUIT:
+                        return "exit"
+                    if event.type == pg.KEYDOWN:
+                        if event.key == pg.K_DOWN:
+                            selected = (selected + 1) % len(options)
+                        elif event.key == pg.K_UP:
+                            selected = (selected - 1) % len(options)
+                        elif event.key == pg.K_RETURN:
+                            if selected == 0:  # Resume
+                                return "resume"
+                            elif selected == 1:  # Restart
+                                return "restart"
+                            elif selected == 2:  # Exit
+                                return "exit"
+
+
+        screen.fill((0, 0, 0))
+        for index, option in enumerate(options):
+            color = (255, 255, 255) if index == selected else (100, 100, 100)
+            text = font.render(option, True, color)
+            screen.blit(text, (WINDOW // 2 - text.get_width() // 2, WINDOW // 2 + index * 40))
+        pg.display.flip()
+        clock.tick(60)
 
 
     # Ask if user wants to delete a highscore
@@ -165,24 +193,69 @@ def display_and_manage_highscores(current_score):
         name_to_delete = input("Enter the name of the player whose highscore you want to delete: ")
         delete_highscore(name_to_delete)
         print(f"Highscore for {name_to_delete} has been deleted.")
-# ================== ORIGINAL GAME ==================
+    
 
 # ================== ORIGINAL GAME ==================
 def original_game():
-    global power_up, power_up_timer, double_score_timer
+    global power_up, power_up_timer, double_score_timer, rainbow_mode, rainbow_mode_timer
+
     snake = [pg.rect.Rect([0, 0, TILE_SIZE, TILE_SIZE])]
     food = pg.rect.Rect(get_random_position() + [TILE_SIZE, TILE_SIZE])
     direction = (TILE_SIZE, 0)
     score = 0
     speed = 10
-    last_power_up_spawn_time = 0 
+    last_power_up_spawn_time = 0
+    rainbow_colors = [(255, 0, 0), (255, 165, 0), (255, 255, 0),
+                      (0, 255, 0), (0, 0, 255), (75, 0, 130),
+                      (238, 130, 238)]
+    rainbow_mode = False
+    rainbow_mode_timer = 0
+
+    def pause_menu():
+        paused = True
+        selected = 0
+        options = ["Resume", "Restart", "Exit"]
+
+        while paused:
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    return "exit"
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_DOWN:
+                        selected = (selected + 1) % len(options)
+                    elif event.key == pg.K_UP:
+                        selected = (selected - 1) % len(options)
+                    elif event.key == pg.K_RETURN:
+                        if selected == 0:  # Resume
+                            paused = False
+                        elif selected == 1:  # Restart
+                            return "restart"
+                        elif selected == 2:  # Exit
+                            return "exit"
+
+            screen.fill((0, 0, 0))
+            for index, option in enumerate(options):
+                color = (255, 255, 255) if index == selected else (100, 100, 100)
+                text = font.render(option, True, color)
+                screen.blit(text, (WINDOW // 2 - text.get_width() // 2, WINDOW // 2 + index * 40))
+            pg.display.flip()
+            clock.tick(60)
+
+        return "resume"
 
     while True:
+        current_time = pg.time.get_ticks()
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 exit()
             if event.type == pg.KEYDOWN:
-                if event.key == pg.K_UP and direction != (0, TILE_SIZE):
+                if event.key == pg.K_p:
+                    result = pause_menu()
+                    if result == "exit":
+                        exit()
+                    elif result == "restart":
+                        return original_game()
+                elif event.key == pg.K_UP and direction != (0, TILE_SIZE):
                     direction = (0, -TILE_SIZE)
                 elif event.key == pg.K_DOWN and direction != (0, -TILE_SIZE):
                     direction = (0, TILE_SIZE)
@@ -195,21 +268,23 @@ def original_game():
         head.move_ip(direction)
         snake.insert(0, head)
 
-         # Check for power-up spawn
-        if not power_up and pg.time.get_ticks() - last_power_up_spawn_time >= 10000:
-            spawn_power_up()
-            last_power_up_spawn_time = pg.time.get_ticks()
+        if power_up and snake[0].colliderect(power_up):
+            power_up = None
+            power_up_timer = None
+            double_score_timer = current_time + DOUBLE_SCORE_DURATION
+            rainbow_mode = True
+            rainbow_mode_timer = current_time + 5000
+            bite_sound.play()
 
-        # Check for power-up collision
+        if power_up is None and current_time - last_power_up_spawn_time >= 5000:
+            spawn_power_up()
+            last_power_up_spawn_time = current_time
         if power_up:
             check_power_up_collision(snake)
 
-        # Remove power-up after 5 seconds
-        if power_up_timer and pg.time.get_ticks() >= power_up_timer:
+        if power_up_timer and current_time >= power_up_timer:
             power_up = None
             power_up_timer = None
-        
-        
 
         if snake[0].colliderect(food):
             food.topleft = get_random_position()
@@ -226,22 +301,26 @@ def original_game():
             break
 
         screen.fill((0, 0, 0))
-        
         draw_grid()
+
         for index, segment in enumerate(snake):
-            if index == 0:
-                pg.draw.rect(screen, (0, 255, 0), segment)
+            if rainbow_mode and current_time < rainbow_mode_timer:
+                color_index = (current_time // 100) % len(rainbow_colors)
+                color = rainbow_colors[color_index]
             else:
-                pg.draw.rect(screen, 'green', segment)
+                color = (0, 255, 0)
+            pg.draw.rect(screen, color, segment)
 
         pg.draw.rect(screen, 'red', food)
         if power_up:
             pg.draw.ellipse(screen, 'purple', power_up)
         score_text = font.render(f'Score: {score}', True, (255, 255, 255))
         screen.blit(score_text, (10, 10))
+
         if double_score_timer and pg.time.get_ticks() < double_score_timer:
             double_score_text = font.render('Double Score Active!', True, (255, 0, 255))
             screen.blit(double_score_text, (WINDOW - double_score_text.get_width() - 10, 10))
+
         pg.display.flip()
         clock.tick(speed)
 
