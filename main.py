@@ -4,8 +4,22 @@ from random import randrange
 
 # ================== INITIALIZATION ==================
 pg.init()
+
+# Initialize the pygame mixer for music playback
 pg.mixer.init()
+
+# Load and play the background music
+background_music = pg.mixer.music.load('595665__chungus43a__super-mario-bros.wav')
+pg.mixer.music.play(-1)  # This will play the music indefinitely
+
+# Load the bite sound
 bite_sound = pg.mixer.Sound('360685__herrabilbo__eating-v2 (1).mp3')
+
+# ... rest of your code ...
+
+
+
+
 
 # ================== CONSTANTS ==================
 WINDOW = 800
