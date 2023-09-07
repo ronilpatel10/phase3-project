@@ -411,6 +411,7 @@ def maze_game():
 # ================== MAIN MENU ==================
 def main_menu():
     selected = 0
+
     options = ["Play Original Game", "Play Maze Game"]
 
     while True:
