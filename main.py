@@ -9,21 +9,12 @@ pg.init()
 pg.mixer.init()
 
 # Load and play the background music
-background_music = pg.mixer.music.load('701313__dudamix98__retro_opening_theme.wav')
-pg.mixer.music.set_volume(0.3)  # Set volume to 50%
+background_music = pg.mixer.music.load('370294__mrthenoronha__tribal-game-theme-loop.wav')
+pg.mixer.music.set_volume(0.2)  # Set volume to 50%
 pg.mixer.music.play(-1)  # This will play the music indefinitely
 
 # Load the bite sound
 bite_sound = pg.mixer.Sound('360685__herrabilbo__eating-v2 (1).mp3')
-
-# ... rest of your code ...
-
-
-# ... rest of your code ...
-
-
-
-
 
 # ================== CONSTANTS ==================
 WINDOW = 800
