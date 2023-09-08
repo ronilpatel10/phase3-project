@@ -226,10 +226,10 @@ def game_over_screen(score):
 
     main_menu_text = font.render("Press M for Main Menu", True, (0, 255, 0))
     screen.blit(main_menu_text, (screen_width // 2 - main_menu_text.get_width() // 2, 3 * screen_height // 4 + 40))
+    
+    pg.display.flip() 
 
-
-    pg.display.flip()   
-
+    
     while True:
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -243,6 +243,23 @@ def game_over_screen(score):
                     exit()
 
         clock.tick(60)
+
+    # After the game over loop, check if the current score is a highscore
+        if score > get_highscore():
+        # This section is pseudo-code because Pygame doesn't support native input boxes. 
+        # You would need to use a library like "pgu" or build a custom input box.
+            user_name = input("Enter your name for the highscore: ")  # Get player's name using your preferred method
+            save_highscore(user_name, score)
+            
+            # Display the high scores
+            display_and_manage_highscores(score)
+
+
+
+
+
+
+
 
 def display_and_manage_highscores(current_score):
     print("Game Over!")
