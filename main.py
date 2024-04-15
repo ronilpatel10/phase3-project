@@ -124,9 +124,9 @@ def init_db():
 conn, cursor = init_db()
 
 def get_top_scores(limit=5):
-    cursor.execute("SELECT name, score FROM highscores ORDER BY score DESC LIMIT 1")
-
+    cursor.execute("SELECT name, score FROM highscores ORDER BY score DESC LIMIT ?", (limit,))
     return cursor.fetchall()
+
 
 def get_highscore():
     cursor.execute('SELECT MAX(score) FROM highscores')
@@ -213,53 +213,76 @@ def draw_maze():
 
 def game_over_screen(score):
     font = pg.font.SysFont(None, 48)
-    screen.fill(BACKGROUND_COLOR)  # Fill the screen with the background color
+    small_font = pg.font.SysFont(None, 32)
+    name = ""
+    input_active = False
+    input_box_color_inactive = (255, 255, 255)
+    input_box_color_active = (0, 255, 0)
+    input_box_color = input_box_color_inactive
+    input_box = pg.Rect(screen_width // 2 - 100, screen_height // 2 + 100, 200, 32)
 
-    game_over_text = font.render("Game Over!", True, (255, 0, 0))
-    screen.blit(game_over_text, (screen_width // 2 - game_over_text.get_width() // 2, screen_height // 4))
+    def draw():
+        screen.fill(BACKGROUND_COLOR)
+        game_over_text = font.render("Game Over!", True, (255, 0, 0))
+        score_text = font.render(f'Score: {score}', True, (255, 255, 255))
+        enter_name_text = small_font.render("Enter Name for Highscore and press Enter:", True, (255, 255, 255))
+        restart_text = small_font.render("Press R to Restart", True, (255, 255, 255))
+        main_menu_text = small_font.render("Press M for Main Menu", True, (255, 255, 255))
+        
+        screen.blit(game_over_text, (screen_width // 2 - game_over_text.get_width() // 2, screen_height // 4))
+        screen.blit(score_text, (screen_width // 2 - score_text.get_width() // 2, screen_height // 2))
+        screen.blit(enter_name_text, (screen_width // 2 - enter_name_text.get_width() // 2, screen_height // 2 + 50))
+        screen.blit(restart_text, (screen_width // 2 - restart_text.get_width() // 2, screen_height - 150))
+        screen.blit(main_menu_text, (screen_width // 2 - main_menu_text.get_width() // 2, screen_height - 110))
+        
+        txt_surface = small_font.render(name, True, (0, 0, 0))
+        screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
+        pg.draw.rect(screen, input_box_color, input_box, 2)
 
-    score_text = font.render(f'Score: {score}', True, (255, 255, 255))
-    screen.blit(score_text, (screen_width // 2 - score_text.get_width() // 2, screen_height // 2))
+        # Display all high scores
+        highscores = get_top_scores(5)  # Fetch the top 5 high scores
+        start_y = 100
+        for idx, (highscore_name, highscore) in enumerate(highscores, start=1):
+            highscore_text = small_font.render(f"{idx}. {highscore_name}: {highscore}", True, (255, 255, 255))
+            screen.blit(highscore_text, (50, start_y))
+            start_y += highscore_text.get_height() + 5
 
-    restart_text = font.render("Press R to Restart", True, (0, 255, 0))
-    screen.blit(restart_text, (screen_width // 2 - restart_text.get_width() // 2, 3 * screen_height // 4))
+        pg.display.flip()
 
-    main_menu_text = font.render("Press M for Main Menu", True, (0, 255, 0))
-    screen.blit(main_menu_text, (screen_width // 2 - main_menu_text.get_width() // 2, 3 * screen_height // 4 + 40))
-    
-    pg.display.flip() 
-
-    
     while True:
         for event in pg.event.get():
             if event.type == pg.QUIT:
+                pg.quit()
                 exit()
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_r:
-                    return "restart"  # Restart the game
+                    if name:  # Save the high score if a name was entered
+                        save_highscore(name, score)
+                    return "restart"
                 elif event.key == pg.K_m:
+                    if name:  # Save the high score if a name was entered
+                        save_highscore(name, score)
                     return "main_menu"
-                elif event.key == pg.K_ESCAPE:
-                    exit()
+                elif input_active:
+                    if event.key == pg.K_RETURN:
+                        input_active = False
+                        input_box_color = input_box_color_inactive
+                        if name:  # Save the high score if a name was entered
+                            save_highscore(name, score)
+                    elif event.key == pg.K_BACKSPACE:
+                        name = name[:-1]
+                    else:
+                        name += event.unicode
+            if event.type == pg.MOUSEBUTTONDOWN:
+                if input_box.collidepoint(event.pos):
+                    input_active = not input_active
+                    input_box_color = input_box_color_active if input_active else input_box_color_inactive
+                else:
+                    input_active = False
+                    input_box_color = input_box_color_inactive
 
-        clock.tick(60)
-
-    # After the game over loop, check if the current score is a highscore
-        if score > get_highscore():
-        # This section is pseudo-code because Pygame doesn't support native input boxes. 
-        # You would need to use a library like "pgu" or build a custom input box.
-            user_name = input("Enter your name for the highscore: ")  # Get player's name using your preferred method
-            save_highscore(user_name, score)
-            
-            # Display the high scores
-            display_and_manage_highscores(score)
-
-
-
-
-
-
-
+        draw()
+        clock.tick(30)
 
 def display_and_manage_highscores(current_score):
     print("Game Over!")
@@ -571,7 +594,7 @@ def main_menu():
 
         # Display title
         title_font = pg.font.SysFont("comicsansms", 72)
-        title_text_surface = title_font.render("Serphant Safari", True, TEXT_COLOR)
+        title_text_surface = title_font.render("Serpant Safari", True, TEXT_COLOR)
         title_y_position = screen_height // 6  # Positioned a bit above the center for better spacing
         title_x_position = screen_width // 2 - title_text_surface.get_width() // 2
 
@@ -719,4 +742,3 @@ font = pg.font.SysFont(None, 36)
  
 # ================== START THE GAME ==================
 main_menu()
-
